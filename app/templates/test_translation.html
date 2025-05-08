@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Тест: {{ word.word }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Тестирование знаний</h1>
+            <div class="progress" style="height: 10px;">
+                <div class="progress-bar bg-success" role="progressbar" 
+                     style="width: {{ (current / total * 100) | int }}%;" 
+                     aria-valuenow="{{ (current / total * 100) | int }}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <small class="text-muted">Вопрос {{ current }} из {{ total }}</small>
+                <small class="text-muted">Сложность: {{ test_session.difficulty }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card test-card">
+                <div class="card-header bg-warning text-dark">
+                    <h2 class="h4 mb-0">{{ test.question }}</h2>
+                </div>
+                <div class="card-body test-container" data-test-id="{{ test.id }}" data-session-id="{{ test_session.id }}">
+                    <div class="word-display mb-4 text-center">
+                        <h3 class="display-5 word-highlight">{{ word.word }}</h3>
+                        {% if word.example %}
+                        <p class="text-muted fst-italic">{{ word.example }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="translation-container">
+                        <form id="translationForm" class="mb-4">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="translationInput" placeholder="Введите перевод">
+                                <label for="translationInput">Введите перевод</label>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-warning check-btn">Проверить</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="result-container mt-4 d-none">
+                        <div class="correct-answer-container alert alert-success d-none">
+                            <h4 class="alert-heading">Правильно!</h4>
+                            <p class="mb-0">Верный перевод: <strong class="correct-answer"></strong></p>
+                        </div>
+                        <div class="wrong-answer-container alert alert-danger d-none">
+                            <h4 class="alert-heading">Неправильно!</h4>
+                            <p class="mb-0">Верный перевод: <strong class="correct-answer"></strong></p>
+                            <p class="mb-0">Ваш ответ: <strong class="user-answer"></strong></p>
+                        </div>
+                        
+                        {% if word.context %}
+                        <div class="context-container mt-3 p-3 bg-light rounded">
+                            <h5 class="h6"><i class="fas fa-film me-2"></i>Контекст:</h5>
+                            <p class="mb-0">{{ word.context }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                            <button class="btn btn-primary next-btn">Следующий вопрос</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const testContainer = document.querySelector('.test-container');
+        const translationForm = document.getElementById('translationForm');
+        const translationInput = document.getElementById('translationInput');
+        const resultContainer = document.querySelector('.result-container');
+        const correctContainer = document.querySelector('.correct-answer-container');
+        const wrongContainer = document.querySelector('.wrong-answer-container');
+        const correctAnswerElements = document.querySelectorAll('.correct-answer');
+        const userAnswerElement = document.querySelector('.user-answer');
+        const nextButton = document.querySelector('.next-btn');
+        
+        const testId = testContainer.dataset.testId;
+        const sessionId = testContainer.dataset.sessionId;
+        
+        // Устанавливаем фокус на поле ввода
+        translationInput.focus();
+        
+        // Обработка отправки формы
+        translationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const userTranslation = translationInput.value.trim();
+            if (!userTranslation) return;
+            
+            // Блокируем форму
+            translationInput.setAttribute('disabled', 'disabled');
+            translationForm.querySelector('button').setAttribute('disabled', 'disabled');
+            
+            // Отправляем ответ на сервер
+            fetch('{{ url_for("main.submit_test_answer") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    session_id: sessionId,
+                    answer: userTranslation
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Отображаем результат
+                if (data.is_correct) {
+                    correctContainer.classList.remove('d-none');
+                } else {
+                    wrongContainer.classList.remove('d-none');
+                    userAnswerElement.textContent = userTranslation;
+                }
+                
+                // Показываем правильный ответ
+                correctAnswerElements.forEach(el => {
+                    el.textContent = data.correct_answer;
+                });
+                
+                // Показываем контейнер результата
+                resultContainer.classList.remove('d-none');
+                
+                // Изменяем текст кнопки, если это последний вопрос
+                if (data.is_last) {
+                    nextButton.textContent = 'Завершить тест';
+                }
+                
+                // Устанавливаем URL для перехода к следующему вопросу
+                nextButton.dataset.nextUrl = data.next_url;
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+        });
+        
+        // Обработка клика по кнопке "Следующий вопрос"
+        nextButton.addEventListener('click', function() {
+            window.location.href = this.dataset.nextUrl;
+        });
+    });
+</script>
+{% endblock %} 
+ 
+ 

@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Тест: Сопоставление{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Тестирование знаний</h1>
+            <div class="progress" style="height: 10px;">
+                <div class="progress-bar bg-success" role="progressbar" 
+                     style="width: {{ (current / total * 100) | int }}%;" 
+                     aria-valuenow="{{ (current / total * 100) | int }}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <small class="text-muted">Вопрос {{ current }} из {{ total }}</small>
+                <small class="text-muted">Сложность: {{ test_session.difficulty }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card test-card">
+                <div class="card-header bg-info text-white">
+                    <h2 class="h4 mb-0">{{ test.question }}</h2>
+                </div>
+                <div class="card-body test-container" data-test-id="{{ test.id }}" data-session-id="{{ test_session.id }}">
+                    <div class="word-display mb-4 text-center">
+                        <h3 class="h5">Соедините пары слов и их переводов</h3>
+                        <p class="text-muted">Перетаскивайте элементы для создания пар</p>
+                    </div>
+                    
+                    <div class="matching-container">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="words-column">
+                                    <h5 class="h6 text-center mb-3">Слова</h5>
+                                    <div class="list-group words-list">
+                                        {% for word_data in words_data %}
+                                        <div class="list-group-item word-item" draggable="true" data-word="{{ word_data.word }}">
+                                            {{ word_data.word }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-2 d-flex align-items-center justify-content-center">
+                                <div class="connections-container">
+                                    <!-- Соединения будут добавлены с помощью JavaScript -->
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-5">
+                                <div class="translations-column">
+                                    <h5 class="h6 text-center mb-3">Переводы</h5>
+                                    <div class="list-group translations-list">
+                                        {% for word_data in words_data|shuffle %}
+                                        <div class="list-group-item translation-item" draggable="true" data-translation="{{ word_data.translation }}">
+                                            {{ word_data.translation }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="matches-container mt-4">
+                            <h5 class="h6 text-center mb-3">Ваши пары</h5>
+                            <div class="list-group" id="matches-list">
+                                <!-- Сопоставленные пары будут отображаться здесь -->
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                            <button class="btn btn-info check-matches-btn">Проверить ответы</button>
+                        </div>
+                    </div>
+                    
+                    <div class="result-container mt-4 d-none">
+                        <div class="correct-answer-container alert alert-success d-none">
+                            <h4 class="alert-heading">Правильно!</h4>
+                            <p class="mb-0">Вы правильно сопоставили все слова!</p>
+                        </div>
+                        <div class="wrong-answer-container alert alert-danger d-none">
+                            <h4 class="alert-heading">Не совсем правильно!</h4>
+                            <p class="mb-0">Некоторые пары сопоставлены неверно.</p>
+                        </div>
+                        
+                        <div class="correct-pairs-container mt-3 p-3 bg-light rounded">
+                            <h5 class="h6">Правильные пары:</h5>
+                            <div id="correct-pairs-list">
+                                <!-- Правильные пары будут отображаться здесь -->
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                            <button class="btn btn-primary next-btn">Следующий вопрос</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const testContainer = document.querySelector('.test-container');
+        const wordItems = document.querySelectorAll('.word-item');
+        const translationItems = document.querySelectorAll('.translation-item');
+        const matchesList = document.getElementById('matches-list');
+        const checkMatchesBtn = document.querySelector('.check-matches-btn');
+        const resultContainer = document.querySelector('.result-container');
+        const correctContainer = document.querySelector('.correct-answer-container');
+        const wrongContainer = document.querySelector('.wrong-answer-container');
+        const correctPairsList = document.getElementById('correct-pairs-list');
+        const nextButton = document.querySelector('.next-btn');
+        
+        const testId = testContainer.dataset.testId;
+        const sessionId = testContainer.dataset.sessionId;
+        
+        // Объект для хранения сопоставленных пар
+        const matchedPairs = {};
+        
+        // Обработчики для перетаскивания
+        wordItems.forEach(item => {
+            item.addEventListener('dragstart', handleDragStart);
+        });
+        
+        translationItems.forEach(item => {
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('dragover', handleDragOver);
+            item.addEventListener('drop', handleDrop);
+        });
+        
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: this.classList.contains('word-item') ? 'word' : 'translation',
+                text: this.textContent.trim(),
+                data: this.classList.contains('word-item') ? this.dataset.word : this.dataset.translation
+            }));
+            this.classList.add('dragging');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const draggedItemData = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const targetItemData = {
+                type: this.classList.contains('word-item') ? 'word' : 'translation',
+                text: this.textContent.trim(),
+                data: this.classList.contains('word-item') ? this.dataset.word : this.dataset.translation
+            };
+            
+            // Проверяем, что перетаскиваем разные типы элементов
+            if (draggedItemData.type !== targetItemData.type) {
+                // Определяем, какой элемент является словом, а какой переводом
+                const wordData = draggedItemData.type === 'word' ? draggedItemData : targetItemData;
+                const translationData = draggedItemData.type === 'translation' ? draggedItemData : targetItemData;
+                
+                // Добавляем пару в сопоставленные
+                matchedPairs[wordData.data] = translationData.data;
+                
+                // Создаем элемент для отображения пары
+                const matchItem = document.createElement('div');
+                matchItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                matchItem.innerHTML = `
+                    <span class="word-part">${wordData.text}</span>
+                    <i class="fas fa-arrow-right text-primary"></i>
+                    <span class="translation-part">${translationData.text}</span>
+                    <button class="btn btn-sm btn-outline-danger remove-pair-btn" data-word="${wordData.data}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                // Добавляем обработчик для удаления пары
+                const removeBtn = matchItem.querySelector('.remove-pair-btn');
+                removeBtn.addEventListener('click', function() {
+                    delete matchedPairs[this.dataset.word];
+                    matchItem.remove();
+                });
+                
+                // Добавляем пару в список
+                matchesList.appendChild(matchItem);
+            }
+        }
+        
+        // Обработчик для кнопки проверки сопоставлений
+        checkMatchesBtn.addEventListener('click', function() {
+            // Блокируем кнопку
+            this.setAttribute('disabled', 'disabled');
+            
+            // Отправляем ответы на сервер
+            fetch('{{ url_for("main.submit_test_answer") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_id: testId,
+                    session_id: sessionId,
+                    answer: JSON.stringify(matchedPairs)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Отображаем результат
+                if (data.is_correct) {
+                    correctContainer.classList.remove('d-none');
+                } else {
+                    wrongContainer.classList.remove('d-none');
+                }
+                
+                // Показываем правильные пары
+                const correctPairs = JSON.parse(data.correct_answer);
+                correctPairsList.innerHTML = '';
+                
+                for (const word in correctPairs) {
+                    const pairItem = document.createElement('div');
+                    pairItem.className = 'd-flex justify-content-between align-items-center mb-2';
+                    pairItem.innerHTML = `
+                        <span class="word-part">${word}</span>
+                        <i class="fas fa-arrow-right text-success mx-2"></i>
+                        <span class="translation-part">${correctPairs[word]}</span>
+                    `;
+                    correctPairsList.appendChild(pairItem);
+                }
+                
+                // Показываем контейнер результата
+                resultContainer.classList.remove('d-none');
+                
+                // Изменяем текст кнопки, если это последний вопрос
+                if (data.is_last) {
+                    nextButton.textContent = 'Завершить тест';
+                }
+                
+                // Устанавливаем URL для перехода к следующему вопросу
+                nextButton.dataset.nextUrl = data.next_url;
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+        });
+        
+        // Обработка клика по кнопке "Следующий вопрос"
+        nextButton.addEventListener('click', function() {
+            window.location.href = this.dataset.nextUrl;
+        });
+    });
+</script>
+
+<style>
+    .word-item, .translation-item {
+        cursor: move;
+        margin-bottom: 10px;
+        transition: all 0.2s;
+    }
+    
+    .word-item.dragging, .translation-item.dragging {
+        opacity: 0.5;
+    }
+    
+    .word-item.drag-over, .translation-item.drag-over {
+        border-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    
+    .matches-container {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #matches-list {
+        min-height: 100px;
+    }
+    
+    .check-matches-btn {
+        /* кнопка теперь будет отображаться по умолчанию */
+    }
+</style>
+{% endblock %} 

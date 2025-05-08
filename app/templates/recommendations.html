@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Рекомендации{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Рекомендации</h1>
+            <p class="text-muted">Слова, которые требуют особого внимания при изучении.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="h5 mb-0">Слова с наибольшим количеством ошибок</h2>
+                </div>
+                <div class="card-body">
+                    {% if problem_words %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Слово</th>
+                                    <th>Перевод</th>
+                                    <th>Ошибок</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for word, mistake in problem_words %}
+                                <tr>
+                                    <td>{{ word.word }}</td>
+                                    <td>{{ word.translation }}</td>
+                                    <td>
+                                        <span class="badge bg-danger rounded-pill">{{ mistake.mistake_count }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('main.word_detail', word_id=word.id) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <p class="mb-0">У вас нет слов с большим количеством ошибок. Отличная работа!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h2 class="h5 mb-0">Слова с низким уровнем освоения</h2>
+                </div>
+                <div class="card-body">
+                    {% if low_level_words %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Слово</th>
+                                    <th>Перевод</th>
+                                    <th>Уровень</th>
+                                    <th>Повторений</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for word, repetition in low_level_words %}
+                                <tr>
+                                    <td>{{ word.word }}</td>
+                                    <td>{{ word.translation }}</td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">{{ repetition.user_level }}</span>
+                                    </td>
+                                    <td>{{ repetition.repeat_count }}</td>
+                                    <td>
+                                        <a href="{{ url_for('main.word_detail', word_id=word.id) }}" class="btn btn-sm btn-outline-primary">Подробнее</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <p class="mb-0">У вас нет слов с низким уровнем освоения. Отличная работа!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Советы по изучению сложных слов</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h3 class="h6">1. Используйте контекст</h3>
+                                    <p class="mb-0">Связывайте слово с примерами из фильмов, книг или известных выражений.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h3 class="h6">2. Повторяйте чаще</h3>
+                                    <p class="mb-0">Уделяйте сложным словам больше внимания, повторяйте их перед сном.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h3 class="h6">3. Ассоциации</h3>
+                                    <p class="mb-0">Создавайте личные ассоциации, связывающие слово с чем-то знакомым.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <p class="mb-0">
+                            <strong>Совет:</strong> Для слов с высоким количеством ошибок попробуйте временно сбросить их уровень и начать изучение заново, 
+                            сосредоточившись на создании более сильных ассоциаций.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

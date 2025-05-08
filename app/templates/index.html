@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Главная{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h4 mb-0">Добро пожаловать в LearnWords!</h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">LearnWords - это платформа для эффективного изучения английских слов с использованием интервальных повторений, контекста и геймификации.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card text-center bg-light mb-3">
+                            <div class="card-body">
+                                <h3 class="display-4">{{ words_to_review }}</h3>
+                                <p class="text-muted mb-1">Слов для повторения</p>
+                                {% if words_to_review > 0 %}
+                                <a href="{{ url_for('main.review') }}" class="btn btn-primary btn-sm">Повторить</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card text-center bg-light mb-3">
+                            <div class="card-body">
+                                <h3 class="display-4">{{ progress.streak }}</h3>
+                                <p class="text-muted mb-1">Дней подряд</p>
+                                <a href="{{ url_for('main.show_progress') }}" class="btn btn-outline-primary btn-sm">Статистика</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="h5 mb-0">Тестирование знаний</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="icon-container mb-2">
+                                        <i class="fas fa-calendar-day fa-3x text-primary"></i>
+                                    </div>
+                                    <h4 class="h6">Ежедневный тест</h4>
+                                    <p class="small text-muted">Слова для повторения на сегодня</p>
+                                    <form action="{{ url_for('main.new_test') }}" method="post">
+                                        <input type="hidden" name="session_type" value="daily">
+                                        <input type="hidden" name="word_count" value="10">
+                                        <input type="hidden" name="difficulty" value="2">
+                                        <button type="submit" class="btn btn-primary btn-sm">Начать</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="icon-container mb-2">
+                                        <i class="fas fa-puzzle-piece fa-3x text-warning"></i>
+                                    </div>
+                                    <h4 class="h6">Тематический тест</h4>
+                                    <p class="small text-muted">Слова, которые вы часто забываете</p>
+                                    <form action="{{ url_for('main.new_test') }}" method="post">
+                                        <input type="hidden" name="session_type" value="thematic">
+                                        <input type="hidden" name="word_count" value="10">
+                                        <input type="hidden" name="difficulty" value="3">
+                                        <button type="submit" class="btn btn-warning btn-sm">Начать</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="icon-container mb-2">
+                                        <i class="fas fa-cogs fa-3x text-info"></i>
+                                    </div>
+                                    <h4 class="h6">Настраиваемый тест</h4>
+                                    <p class="small text-muted">Выберите свои параметры</p>
+                                    <a href="{{ url_for('main.new_test') }}" class="btn btn-info btn-sm">Настроить</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('main.tests') }}" class="btn btn-outline-success">Все тесты</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="h5 mb-0">Добавить новое слово</h3>
+            </div>
+            <div class="card-body">
+                <form id="addWordForm" action="{{ url_for('main.add_word') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="word" class="form-label">Слово:</label>
+                        <input type="text" class="form-control" id="word" name="word" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="translation" class="form-label">Перевод:</label>
+                        <input type="text" class="form-control" id="translation" name="translation" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="example" class="form-label">Пример:</label>
+                        <input type="text" class="form-control" id="example" name="example">
+                    </div>
+                    <div class="mb-3">
+                        <label for="context" class="form-label">Контекст (фильм/мем):</label>
+                        <textarea class="form-control" id="context" name="context" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Добавить слово</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="h5 mb-0">Ваш прогресс</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="p-2 bg-light rounded me-3">
+                        <i class="fas fa-trophy text-warning fa-2x"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0">{{ progress.points }} очков</h4>
+                        <p class="small text-muted mb-0">Ваш ранг: <span id="userRank" class="fw-bold">Новичок</span></p>
+                    </div>
+                </div>
+                
+                <div class="progress mb-3">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         id="rankProgressBar"
+                         style="width: 0%;" 
+                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        0/100
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between text-center">
+                    <div>
+                        <h5 class="mb-0">{{ progress.streak }}</h5>
+                        <small class="text-muted">Дней подряд</small>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">{{ words_to_review }}</h5>
+                        <small class="text-muted">Слов сегодня</small>
+                    </div>
+                    <div>
+                        <h5 class="mb-0" id="currentStreak">0</h5>
+                        <small class="text-muted">Выучено</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Определяем ранг пользователя на основе очков
+    document.addEventListener('DOMContentLoaded', function() {
+        const points = {{ progress.points }};
+        const rankElement = document.getElementById('userRank');
+        const progressBar = document.getElementById('rankProgressBar');
+        
+        let rankProgress = 0;
+        let nextMilestone = 100;
+        let currentThreshold = 0;
+        
+        if (points < 100) {
+            rankElement.textContent = 'Новичок';
+            rankProgress = (points / 100) * 100;
+            nextMilestone = 100;
+            currentThreshold = 0;
+        } else if (points < 500) {
+            rankElement.textContent = 'Ученик';
+            rankProgress = ((points - 100) / 400) * 100;
+            nextMilestone = 500;
+            currentThreshold = 100;
+        } else if (points < 1000) {
+            rankElement.textContent = 'Мастер';
+            rankProgress = ((points - 500) / 500) * 100;
+            nextMilestone = 1000;
+            currentThreshold = 500;
+        } else if (points < 2000) {
+            rankElement.textContent = 'Профи';
+            rankProgress = ((points - 1000) / 1000) * 100;
+            nextMilestone = 2000;
+            currentThreshold = 1000;
+        } else {
+            rankElement.textContent = 'Мастер слов';
+            rankProgress = 100;
+            nextMilestone = points;
+            currentThreshold = 2000;
+        }
+        
+        // Обновляем прогресс-бар
+        progressBar.style.width = rankProgress + '%';
+        progressBar.setAttribute('aria-valuenow', rankProgress);
+        progressBar.textContent = Math.floor(points - currentThreshold) + '/' + (nextMilestone - currentThreshold);
+        
+        // Имитация количества выученных слов на основе очков
+        const learnedElement = document.getElementById('currentStreak');
+        if (learnedElement) {
+            learnedElement.textContent = Math.floor(points / 20);
+        }
+    });
+</script>
+{% endblock %} 
