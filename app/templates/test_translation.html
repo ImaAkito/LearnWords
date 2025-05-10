@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Тест{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Тестирование знаний</h1>
+            <p class="text-muted">Вопрос {{ progress.current }} из {{ progress.total }}</p>
+            <div class="progress mb-3">
+                <div class="progress-bar" role="progressbar" style="width: {{ progress.percent }}%;" 
+                     aria-valuenow="{{ progress.percent }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ progress.percent }}%
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">{{ test.question }}</h2>
+                </div>
+                <div class="card-body">
+                    <div class="test-container" data-test-id="{{ test.id }}" data-session-id="{{ test_session.id }}">
+                        <div class="word-display mb-4 text-center">
+                            <h3 class="display-5">{{ word.word }}</h3>
+                            {% if word.example %}
+                            <p class="text-muted fst-italic">{{ word.example }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="options-container">
+                            <p><strong>Введите перевод слова:</strong></p>
+                            <div class="mb-4">
+                                <input type="text" class="form-control form-control-lg" id="translationInput" 
+                                       placeholder="Введите перевод здесь" autocomplete="off">
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" id="submitAnswerBtn">Проверить ответ</button>
+                        </div>
+                    </div>
+                    
+                    <div id="result-container" class="mt-4 d-none">
+                        <div id="correct-answer-container" class="alert alert-success d-none">
+                            <h4 class="alert-heading">Верно!</h4>
+                            <p>Поздравляем! Вы правильно ответили на вопрос.</p>
+                            <p class="mb-0">
+                                <strong>{{ word.word }}</strong> действительно означает 
+                                <strong>{{ word.translation }}</strong>
+                            </p>
+                        </div>
+                        
+                        <div id="wrong-answer-container" class="alert alert-danger d-none">
+                            <h4 class="alert-heading">Неверно</h4>
+                            <p>К сожалению, ваш ответ неправильный.</p>
+                            <p class="mb-0">
+                                Правильный перевод: <strong id="correct-answer"></strong>
+                            </p>
+                        </div>
+                        
+                        {% if word.context %}
+                        <div class="context-box mt-4">
+                            <h5>Контекст для запоминания:</h5>
+                            <blockquote class="blockquote">
+                                <p class="mb-0">{{ word.context }}</p>
+                            </blockquote>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button id="nextQuestionBtn" class="btn btn-primary">Следующий вопрос</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    const nextBtn = document.getElementById('nextQuestionBtn');
+    const resultContainer = document.getElementById('result-container');
+    const correctContainer = document.getElementById('correct-answer-container');
+    const wrongContainer = document.getElementById('wrong-answer-container');
+    const correctAnswerElement = document.getElementById('correct-answer');
+    const translationInput = document.getElementById('translationInput');
+    const testContainer = document.querySelector('.test-container');
+    const testId = testContainer.getAttribute('data-test-id');
+    const sessionId = testContainer.getAttribute('data-session-id');
+    let nextUrl = '';
+    
+    // Фокус на поле ввода при загрузке
+    translationInput.focus();
+    
+    // Обработка нажатия Enter
+    translationInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            submitBtn.click();
+        }
+    });
+    
+    submitBtn.addEventListener('click', function() {
+        const answer = translationInput.value.trim();
+        if (!answer) {
+            alert('Пожалуйста, введите перевод слова.');
+            return;
+        }
+        
+        // Отправка ответа на сервер
+        fetch('{{ url_for("main.submit_test_answer") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: sessionId,
+                test_id: testId,
+                answer: answer
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Скрываем контейнер с вопросом
+            submitBtn.style.display = 'none';
+            document.querySelector('.options-container').classList.add('d-none');
+            
+            // Показываем результат
+            resultContainer.classList.remove('d-none');
+            
+            if (data.correct) {
+                correctContainer.classList.remove('d-none');
+            } else {
+                wrongContainer.classList.remove('d-none');
+                correctAnswerElement.textContent = data.correct_answer;
+            }
+            
+            nextUrl = data.next_url;
+            
+            if (data.all_completed) {
+                document.getElementById('nextQuestionBtn').textContent = 'Просмотреть результаты';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при отправке ответа.');
+        });
+    });
+    
+    nextBtn.addEventListener('click', function() {
+        window.location.href = nextUrl;
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.context-box {
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    background-color: #4a6bfe;
+    border-radius: 5px;
+}
+
+#translationInput {
+    font-size: 1.2rem;
+    padding: 1rem;
+    border: 2px solid #dee2e6;
+    transition: border-color 0.2s;
+}
+
+#translationInput:focus {
+    border-color: #4a6bfe;
+    box-shadow: 0 0 0 0.2rem rgba(74, 107, 254, 0.25);
+}
+</style>
+{% endblock %} 
+ 
+ 

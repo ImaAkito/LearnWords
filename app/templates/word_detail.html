@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - {{ word.word }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Информация о слове</h1>
+            <p class="text-muted">Детальная информация и статистика повторений.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h4 mb-0">{{ word.word }}</h2>
+                    {% if repetition %}
+                    <span class="badge bg-light text-primary">Уровень: {{ repetition.user_level }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h3 class="h5">Перевод</h3>
+                            <p class="lead">{{ word.translation }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="h5">Пример</h3>
+                            <p class="text-muted fst-italic">{{ word.example or 'Нет примера' }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if word.context %}
+                    <div class="context-box mb-4">
+                        <h3 class="h5">Контекст</h3>
+                        <blockquote class="blockquote">
+                            <p class="mb-0">{{ word.context }}</p>
+                        </blockquote>
+                    </div>
+                    {% endif %}
+                    
+                    {% if repetition %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h4 class="h6">Следующее повторение</h4>
+                                    <p class="mb-0 lead">{{ repetition.next_review_date.strftime('%d.%m.%Y') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h4 class="h6">Количество повторений</h4>
+                                    <p class="mb-0 lead">{{ repetition.repeat_count }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h4 class="h6">Последний результат</h4>
+                                    <p class="mb-0 lead">
+                                        {% if repetition.last_result == 0 %}
+                                        <span class="text-danger">Очень плохо (0)</span>
+                                        {% elif repetition.last_result <= 2 %}
+                                        <span class="text-warning">Плохо ({{ repetition.last_result }})</span>
+                                        {% elif repetition.last_result == 3 %}
+                                        <span class="text-primary">Хорошо (3)</span>
+                                        {% else %}
+                                        <span class="text-success">Отлично ({{ repetition.last_result }})</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h4 class="h6">Последнее повторение</h4>
+                                    <p class="mb-0 lead">{{ repetition.last_review_date.strftime('%d.%m.%Y') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if repetition and repetition.user_level >= 3 %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h3 class="h5 mb-0">Тестирование</h3>
+                </div>
+                <div class="card-body text-center">
+                    <p>Это слово достигло уровня для тестирования. Проверьте свои знания!</p>
+                    <a href="{{ url_for('main.take_test', word_id=word.id) }}" class="btn btn-success">Пройти тест</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="h5 mb-0">Статистика ошибок</h3>
+                </div>
+                <div class="card-body">
+                    {% if mistake %}
+                    <div class="text-center mb-3">
+                        <h3 class="display-4">{{ mistake.mistake_count }}</h3>
+                        <p class="text-muted">Ошибок всего</p>
+                    </div>
+                    
+                    {% if mistake.last_wrong_date %}
+                    <p class="mb-0">Последняя ошибка: {{ mistake.last_wrong_date.strftime('%d.%m.%Y') }}</p>
+                    {% endif %}
+                    
+                    {% if mistake.mistake_count > 0 %}
+                    <hr>
+                    <div class="alert {% if mistake.mistake_count > 3 %}alert-danger{% else %}alert-warning{% endif %} mb-0">
+                        {% if mistake.mistake_count > 3 %}
+                        <p class="mb-0">Это слово требует особого внимания!</p>
+                        {% else %}
+                        <p class="mb-0">Обратите внимание на это слово при повторении.</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center">
+                        <p class="mb-0">Нет данных об ошибках.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="h5 mb-0">Действия</h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.review') }}" class="btn btn-outline-primary">Вернуться к повторению</a>
+                        <button class="btn btn-warning" id="resetWordBtn">Сбросить прогресс</button>
+                        {% if repetition and repetition.user_level >= 5 %}
+                        <div class="alert alert-success">
+                            <p class="mb-0">Слово успешно выучено!</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resetBtn = document.getElementById('resetWordBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите сбросить прогресс для этого слова? Уровень будет установлен на 0, и слово будет повторено завтра.')) {
+                fetch('{{ url_for("main.reset_word", word_id=word.id) }}', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Прогресс слова сброшен. Оно появится в списке повторений завтра.');
+                        window.location.reload();
+                    } else {
+                        alert('Произошла ошибка: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при отправке запроса.');
+                });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.context-box {
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+    padding: 15px;
+    border-radius: 4px;
+}
+</style>
+{% endblock %} 

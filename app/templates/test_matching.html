@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Тест{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Тестирование знаний</h1>
+            <p class="text-muted">Вопрос {{ progress.current }} из {{ progress.total }}</p>
+            <div class="progress mb-3">
+                <div class="progress-bar" role="progressbar" style="width: {{ progress.percent }}%;" 
+                     aria-valuenow="{{ progress.percent }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ progress.percent }}%
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">{{ test.question }}</h2>
+                </div>
+                <div class="card-body">
+                    <div class="test-container" data-test-id="{{ test.id }}" data-session-id="{{ test_session.id }}">
+                        <div class="options-container">
+                            <p><strong>Сопоставьте слова с их переводами:</strong></p>
+                            <div class="matching-container" id="matchingContainer">
+                                {% for item in options['items'] %}
+                                <div class="matching-item" data-key="{{ item.key }}">
+                                    <div class="source">{{ item.key }}</div>
+                                    <div class="target">
+                                        <select class="form-select target-select" data-key="{{ item.key }}">
+                                            <option value="">Выберите перевод</option>
+                                            {% set shuffled = options['items']|shuffle %}
+                                            {% for item2 in shuffled %}
+                                            <option value="{{ item2.value }}">{{ item2.value }}</option>
+                                        {% endfor %}
+                                        </select>
+                                    </div>
+                                        </div>
+                                        {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" id="submitAnswerBtn">Проверить ответ</button>
+                        </div>
+                    </div>
+                    
+                    <div id="result-container" class="mt-4 d-none">
+                        <div id="matching-results-list"></div>
+                        <div id="wrong-answer-container" class="alert alert-danger d-none">
+                            <h4 class="alert-heading">Неверно</h4>
+                            <p>К сожалению, ваш ответ неправильный.</p>
+                        </div>
+                        {% if word.context %}
+                        <div class="context-box mt-4">
+                            <h5>Контекст для запоминания:</h5>
+                            <blockquote class="blockquote">
+                                <p class="mb-0">{{ word.context }}</p>
+                            </blockquote>
+                        </div>
+                        {% endif %}
+                        <div class="d-grid gap-2 mt-4">
+                            <button id="nextQuestionBtn" class="btn btn-primary">Следующий вопрос</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const submitBtn = document.getElementById('submitAnswerBtn');
+    const nextBtn = document.getElementById('nextQuestionBtn');
+    const resultContainer = document.getElementById('result-container');
+    const wrongContainer = document.getElementById('wrong-answer-container');
+    const matchingResultsList = document.getElementById('matching-results-list');
+        const testContainer = document.querySelector('.test-container');
+    const testId = testContainer.getAttribute('data-test-id');
+    const sessionId = testContainer.getAttribute('data-session-id');
+    let nextUrl = '';
+    
+    submitBtn.addEventListener('click', function() {
+        // Собираем все сопоставления
+        const matches = {};
+        document.querySelectorAll('.target-select').forEach(select => {
+            const key = select.getAttribute('data-key');
+            const value = select.value;
+            if (value) {
+                matches[key] = value;
+            }
+        });
+        
+        // Проверяем, что все пары сопоставлены
+        if (Object.keys(matches).length !== document.querySelectorAll('.matching-item').length) {
+            alert('Пожалуйста, сопоставьте все пары слов.');
+            return;
+        }
+        
+        // Отправка ответа на сервер
+            fetch('{{ url_for("main.submit_test_answer") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                session_id: sessionId,
+                    test_id: testId,
+                answer: JSON.stringify(matches)
+            }),
+            })
+            .then(response => response.json())
+            .then(data => {
+            // Скрываем контейнер с вопросом
+            submitBtn.style.display = 'none';
+            document.querySelector('.options-container').classList.add('d-none');
+            
+            // Показываем результат
+            resultContainer.classList.remove('d-none');
+            
+            // Показываем подробные результаты по всем парам
+            if (data.matching_results) {
+                let html = '<div class="list-group">';
+                Object.entries(data.matching_results).forEach(([word, res]) => {
+                    if (res.correct) {
+                        html += `<div class='list-group-item list-group-item-success d-flex justify-content-between align-items-center'>
+                            <span><strong>${word}</strong> — ${res.user}</span>
+                            <span class='badge bg-success'>верно</span>
+                        </div>`;
+                    } else {
+                        html += `<div class='list-group-item list-group-item-danger d-flex justify-content-between align-items-center'>
+                            <span><strong>${word}</strong> — ${res.user}</span>
+                            <span class='badge bg-danger'>неверно, правильно: ${res.correct_answer}</span>
+                        </div>`;
+                    }
+                });
+                html += '</div>';
+                matchingResultsList.innerHTML = html;
+            }
+            
+            if (!data.correct) {
+                    wrongContainer.classList.remove('d-none');
+                }
+                
+            nextUrl = data.next_url;
+            
+            if (data.all_completed) {
+                document.getElementById('nextQuestionBtn').textContent = 'Просмотреть результаты';
+            }
+            })
+            .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при отправке ответа.');
+        });
+    });
+    
+    nextBtn.addEventListener('click', function() {
+        window.location.href = nextUrl;
+    });
+    
+    // Обработка выбора в селектах
+    document.querySelectorAll('.target-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const selectedValue = this.value;
+            if (selectedValue) {
+                // Отключаем выбранное значение в других селектах
+                document.querySelectorAll('.target-select').forEach(otherSelect => {
+                    if (otherSelect !== this && otherSelect.value === selectedValue) {
+                        otherSelect.value = '';
+                    }
+                });
+            }
+        });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+.context-box {
+    background-color: #f8f9fa;
+    border-left: 4px solid #6c757d;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.matching-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.matching-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background-color: #fff;
+        transition: all 0.2s;
+    }
+    
+.matching-item:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.source {
+    flex: 1;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.target {
+    flex: 1;
+}
+
+.target-select {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    transition: border-color 0.2s;
+}
+
+.target-select:focus {
+    border-color: #4a6bfe;
+    box-shadow: 0 0 0 0.2rem rgba(74, 107, 254, 0.25);
+}
+
+.progress {
+    height: 10px;
+    border-radius: 5px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    background-color: #4a6bfe;
+    border-radius: 5px;
+    }
+</style>
+{% endblock %} 

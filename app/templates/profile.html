@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Профиль пользователя{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h3>Личные данные</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if user.avatar_url %}
+                            <img src="{{ user.avatar_url }}" alt="Фото профиля" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=150" alt="Фото профиля" class="rounded-circle img-thumbnail">
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title text-center">{{ user.username }}</h5>
+                    <p class="card-text text-center text-muted">{{ user.email }}</p>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Дата регистрации</span>
+                            <span>{{ user.created_at.strftime('%d.%m.%Y') }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Последний вход</span>
+                            <span>{% if user.last_login %}{{ user.last_login.strftime('%d.%m.%Y %H:%M') }}{% else %}Никогда{% endif %}</span>
+                        </li>
+                    </ul>
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-outline-primary">Изменить данные</a>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">Выйти</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Статистика обучения</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Общий счёт</h5>
+                                    <h2 class="text-primary">{{ user_progress.points if user_progress else 0 }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Ваш ранг</h5>
+                                    <h2 class="text-success">{{ rank }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Дней подряд</h5>
+                                    <h3>{{ user_progress.streak if user_progress else 0 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Изучено слов</h5>
+                                    <h3>{{ mastered_words }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Тестов пройдено</h5>
+                                    <h3>{{ completed_tests }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h4>Активность</h4>
+                </div>
+                <div class="card-body">
+                    <div class="progress-chart">
+                        <!-- Здесь можно добавить график активности -->
+                        <div class="alert alert-info">
+                            График активности за последние 30 дней будет отображаться здесь.
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('main.show_progress') }}" class="btn btn-primary">Подробная статистика</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
+ 
+ 

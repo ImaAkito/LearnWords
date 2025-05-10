@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Создание теста{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Создание нового теста</h1>
+            <p class="text-muted">Настройте параметры теста в соответствии с вашими потребностями.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">Параметры теста</h2>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('main.new_test') }}" method="POST">
+                        <div class="mb-4">
+                            <label class="form-label">Тип теста</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card mb-3 test-type-card" data-test-type="daily">
+                                        <div class="card-body text-center">
+                                            <input type="radio" class="btn-check" name="session_type" id="daily" value="daily" checked>
+                                            <label class="btn btn-outline-primary w-100 h-100" for="daily">
+                                                <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                                                <h5 class="h6">Ежедневный</h5>
+                                                <p class="small text-muted mb-0">Слова для повторения на сегодня</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card mb-3 test-type-card" data-test-type="thematic">
+                                        <div class="card-body text-center">
+                                            <input type="radio" class="btn-check" name="session_type" id="thematic" value="thematic">
+                                            <label class="btn btn-outline-warning w-100 h-100" for="thematic">
+                                                <i class="fas fa-puzzle-piece fa-2x mb-2"></i>
+                                                <h5 class="h6">Тематический</h5>
+                                                <p class="small text-muted mb-0">Слова, которые вы часто забываете</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card mb-3 test-type-card" data-test-type="custom">
+                                        <div class="card-body text-center">
+                                            <input type="radio" class="btn-check" name="session_type" id="custom" value="custom">
+                                            <label class="btn btn-outline-info w-100 h-100" for="custom">
+                                                <i class="fas fa-random fa-2x mb-2"></i>
+                                                <h5 class="h6">Случайный</h5>
+                                                <p class="small text-muted mb-0">Случайные слова из вашего словаря</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="word_count" class="form-label">Количество слов</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1 me-3" id="word_count" name="word_count" min="5" max="30" step="5" value="10">
+                                <span id="word_count_value" class="badge bg-primary">10</span>
+                            </div>
+                            <div class="form-text">Выберите, сколько слов будет в тесте.</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Уровень сложности</label>
+                            <div class="difficulty-selector text-center">
+                                <div class="btn-group" role="group" aria-label="Уровень сложности">
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty1" value="1">
+                                    <label class="btn btn-outline-success" for="difficulty1">Легкий</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty2" value="2" checked>
+                                    <label class="btn btn-outline-primary" for="difficulty2">Средний</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty3" value="3">
+                                    <label class="btn btn-outline-warning" for="difficulty3">Сложный</label>
+                                    
+                                    <input type="radio" class="btn-check" name="difficulty" id="difficulty4" value="4">
+                                    <label class="btn btn-outline-danger" for="difficulty4">Эксперт</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 col-md-6 mx-auto mt-4">
+                            <button type="submit" class="btn btn-primary">Начать тест</button>
+                            <a href="{{ url_for('main.tests') }}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Обновление значения количества слов при изменении ползунка
+        const wordCountInput = document.getElementById('word_count');
+        const wordCountValue = document.getElementById('word_count_value');
+        
+        wordCountInput.addEventListener('input', function() {
+            wordCountValue.textContent = this.value;
+        });
+        
+        // Подсветка выбранного типа теста
+        const testTypeCards = document.querySelectorAll('.test-type-card');
+        testTypeCards.forEach(card => {
+            const radioId = card.querySelector('.btn-check').id;
+            const radio = document.getElementById(radioId);
+            
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    testTypeCards.forEach(c => c.classList.remove('border-primary'));
+                    card.classList.add('border-primary');
+                }
+            });
+            
+            // Установка начального состояния
+            if (radio.checked) {
+                card.classList.add('border-primary');
+            }
+        });
+        
+        // Обработка выбора категории и видимость тегов
+        const categorySelect = document.getElementById('category_selector');
+        const tagContainer = document.getElementById('tag_container');
+        
+        function updateCategoryVisibility() {
+            if (categorySelect && tagContainer) {
+                if (categorySelect.value === 'category') {
+                    tagContainer.classList.remove('d-none');
+                } else {
+                    tagContainer.classList.add('d-none');
+                }
+            }
+        }
+        
+        if (categorySelect) {
+            categorySelect.addEventListener('change', updateCategoryVisibility);
+            
+            // Вызываем функцию при загрузке страницы для установки начального состояния
+            updateCategoryVisibility();
+        }
+    });
+</script>
+{% endblock %} 

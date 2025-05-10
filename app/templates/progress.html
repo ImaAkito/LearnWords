@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}LearnWords - Прогресс{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3">Ваш прогресс</h1>
+            <p class="text-muted">Просмотр статистики, достижений и прогресса обучения.</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Общая статистика -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Общая статистика</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <h3 class="display-4">{{ total_words }}</h3>
+                                <p class="text-muted">Всего слов</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <h3 class="display-4">{{ mastered_words }}</h3>
+                                <p class="text-muted">Выучено</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <h3 class="display-4">{{ problem_words }}</h3>
+                                <p class="text-muted">Сложных слов</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- График прогресса -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">График прогресса</h2>
+                </div>
+                <div class="card-body">
+                    <canvas id="progressChart" height="250"></canvas>
+                </div>
+            </div>
+            
+            <!-- История повторений -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">История повторений</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Повторено слов</th>
+                                    <th>Правильно</th>
+                                    <th>Очки</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in progress_records %}
+                                <tr>
+                                    <td>{{ record.date.strftime('%d.%m.%Y') }}</td>
+                                    <td>{{ record.words_reviewed }}</td>
+                                    <td>{{ record.correct_answers }}</td>
+                                    <td>{{ record.points }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Ранг пользователя -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Ваш ранг</h2>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <h3 id="userRank">Обновление...</h3>
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" id="rankProgress" role="progressbar" 
+                                 style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                        <small class="text-muted" id="pointsToNext">Загрузка...</small>
+                    </div>
+                    <p>Всего очков: <strong id="totalPoints">0</strong></p>
+                </div>
+            </div>
+            
+            <!-- Достижения -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Достижения</h2>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group" id="achievementsList">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Первые 10 слов
+                            <span class="badge bg-primary rounded-pill" id="achievement1">?</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            3 дня подряд
+                            <span class="badge bg-primary rounded-pill" id="achievement2">?</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            10 слов без ошибок
+                            <span class="badge bg-primary rounded-pill" id="achievement3">?</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Сложные слова -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Требуют внимания</h2>
+                </div>
+                <div class="card-body">
+                    {% if problem_words > 0 %}
+                    <p>Эти слова вызывают у вас наибольшие трудности:</p>
+                    <ul class="list-group">
+                        {% for word, mistake in problem_words_list %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('main.word_detail', word_id=word.id) }}">{{ word.word }}</a>
+                            <span class="badge bg-danger rounded-pill float-end">{{ mistake.mistake_count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="mb-0">У вас пока нет слов, требующих особого внимания. Отличная работа!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Данные для графика прогресса
+    const dates = [{% for record in progress_records %}'{{ record.date.strftime("%d.%m") }}'{% if not loop.last %}, {% endif %}{% endfor %}].reverse();
+    const wordsReviewed = [{% for record in progress_records %}{{ record.words_reviewed }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse();
+    const correctAnswers = [{% for record in progress_records %}{{ record.correct_answers }}{% if not loop.last %}, {% endif %}{% endfor %}].reverse();
+    
+    // Создаем график
+    const ctx = document.getElementById('progressChart').getContext('2d');
+    const progressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Повторено слов',
+                    data: wordsReviewed,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 2
+                },
+                {
+                    label: 'Правильные ответы',
+                    data: correctAnswers,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Подсчет общего количества очков
+    let totalPoints = 0;
+    {% for record in progress_records %}
+    totalPoints += {{ record.points }};
+    {% endfor %}
+    document.getElementById('totalPoints').textContent = totalPoints;
+    
+    // Определение ранга пользователя
+    let rank, progress, nextRank, pointsToNext;
+    
+    if (totalPoints < 100) {
+        rank = 'Новичок';
+        progress = (totalPoints / 100) * 100;
+        nextRank = 'Ученик';
+        pointsToNext = 100 - totalPoints;
+    } else if (totalPoints < 500) {
+        rank = 'Ученик';
+        progress = ((totalPoints - 100) / 400) * 100;
+        nextRank = 'Мастер';
+        pointsToNext = 500 - totalPoints;
+    } else if (totalPoints < 1000) {
+        rank = 'Мастер';
+        progress = ((totalPoints - 500) / 500) * 100;
+        nextRank = 'Профи';
+        pointsToNext = 1000 - totalPoints;
+    } else {
+        rank = 'Профи';
+        // Для ранга "Профи" прогресс до 2000 очков
+        const maxPoints = 2000;
+        if (totalPoints < maxPoints) {
+            progress = ((totalPoints - 1000) / 1000) * 100;
+            nextRank = 'Мастер слов';
+            pointsToNext = maxPoints - totalPoints;
+        } else {
+            progress = 100;
+            nextRank = null;
+            pointsToNext = 0;
+        }
+    }
+    
+    document.getElementById('userRank').textContent = rank;
+    document.getElementById('rankProgress').style.width = progress + '%';
+    document.getElementById('rankProgress').setAttribute('aria-valuenow', progress);
+    
+    if (nextRank) {
+        document.getElementById('pointsToNext').textContent = 
+            `${pointsToNext} очков до ранга "${nextRank}"`;
+    } else {
+        document.getElementById('pointsToNext').textContent = 'Максимальный ранг достигнут!';
+    }
+    
+    // Отображение достижений
+    const totalWords = {{ total_words }};
+    const mastered_words = {{ mastered_words }};
+    
+    document.getElementById('achievement1').textContent = totalWords >= 10 ? '✓' : 'x';
+    document.getElementById('achievement1').className = totalWords >= 10 ? 'badge bg-success rounded-pill' : 'badge bg-secondary rounded-pill';
+    
+    {% if progress_records %}
+    const streak = {{ progress_records[0].streak }};
+    document.getElementById('achievement2').textContent = streak >= 3 ? '✓' : 'x';
+    document.getElementById('achievement2').className = streak >= 3 ? 'badge bg-success rounded-pill' : 'badge bg-secondary rounded-pill';
+    {% endif %}
+    
+    document.getElementById('achievement3').textContent = mastered_words >= 10 ? '✓' : 'x';
+    document.getElementById('achievement3').className = mastered_words >= 10 ? 'badge bg-success rounded-pill' : 'badge bg-secondary rounded-pill';
+});
+</script>
+{% endblock %} 
